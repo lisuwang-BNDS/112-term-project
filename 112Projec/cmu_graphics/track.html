@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GazeCloud Bridge</title>
+    <!-- 引入 GazeCloud 官方 API -->
+    <script src="https://api.gazerecorder.com/GazeCloudAPI.js"></script>
+</head>
+<body style="font-family: Arial; text-align: center; padding-top: 50px;">
+    <h1>GazeCloud To Python Bridge</h1>
+    <p id="status">正在初始化摄像头...</p>
+    <p id="coords">X: -, Y: -</p>
+
+    <script>
+        // 1. 启动追踪
+        GazeCloudAPI.StartEyeTracking();
+        GazeCloudAPI.UseClickRecalibration = true;
+
+        GazeCloudAPI.OnCalibrationComplete = function() {
+            document.getElementById('status').innerText = "校准完成！游戏数据传输中...";
+            document.getElementById('status').style.color = "green";
+        }
+
+        // 2. 核心数据回调：拿到坐标，实时推给 Python
+        GazeCloudAPI.OnResult = function (GazeData) {
+            if (GazeData.state == 0) { // 0 代表有效数据
+                let x = Math.round(GazeData.docX);
+                let y = Math.round(GazeData.docY);
+                
+                document.getElementById('coords').innerText = `X: ${x}, Y: ${y}`;
+
+                
+                fetch('http://127.0.0.1:5000/gaze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ x: x, y: y })
+                }).catch(err => console.log("Python 游戏未启动或连接断开"));
+            } else if (GazeData.state == -1) {
+                document.getElementById('status').innerText = "人脸丢失，请对准摄像头";
+                document.getElementById('status').style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
